@@ -1,22 +1,9 @@
-﻿/*
- * Runs on MS Windows only
- * Built by Visual Studio 2022 Community
- * Target framework = .NET 6.0
- *    Nullable = Disable
- *    Implicit global usings = false
- * Installed Packages:
- *    Unofficial.Garmin.Connect 0.2.0+
- *    Microsoft.Extensions.Configuration
- *    Microsoft.Extensions.Configuration.Json
- *    Microsoft.Extensions.Configuration.Binder
- *    Newtonsoft.Json
- */
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Dynamic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -28,11 +15,8 @@ using System.Web;
 using Garmin.Connect;
 using Garmin.Connect.Auth;
 using Garmin.Connect.Models;
-
+using Garmin2StravaFinalSync;
 using Microsoft.Extensions.Configuration;
-
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
 
 using static System.Console;
 
@@ -65,6 +49,14 @@ foreach ( string propertyCfg in ( settings.PropertiesToDescription ?? "" ).Split
   else
     propertiesToDescription.Add( (propertyCfg[..formatIndex], propertyCfg[( formatIndex + 1 )..]) );
 }
+
+
+var strava = new StravaClient(settings);
+
+await strava.AuthorizeAsync();
+
+var activities = await strava.GetActivitiesListAsync(settings.DateAfter, settings.DateBefore);
+
 
 // ----------------------------- Authorize to Strava -----------------------------
 using HttpListener httpListener = new();
@@ -196,7 +188,11 @@ try
       select stravaActivity;
 
     if ( foundGarminInStrava.Count() != 1 )
-      WriteLine( $"\t! Garmin activity not found in Strava!" );
+        {
+            var array  = await client.DownloadActivity(garminActivity.ActivityId, ActivityDownloadFormat.GPX);
+            File.WriteAllBytes($"{garminActivity.ActivityId}.gpx", array);
+            WriteLine( $"\t! Garmin activity not found in Strava!");
+        }
     else
     {
       dynamic stravaActivity = foundGarminInStrava.First();
@@ -295,74 +291,4 @@ finally
 {
   if ( stravaApiUsages != null && stravaApiLimits != null )
     WriteLine( $"Strava API usage: 15-minute {stravaApiUsages[0]}/{stravaApiLimits[0]}, daily {stravaApiUsages[1]}/{stravaApiLimits[1]}" );
-}
-
-internal class Settings
-{
-  /// <summary>
-  /// Strava Client ID obtained by registering your API application at https://www.strava.com/settings/api
-  /// </summary>
-  public int StravaClientId { get; set; }
-  /// <summary>
-  /// Strava Client Secret obtained by registering your API application at https://www.strava.com/settings/api
-  /// </summary>
-  public string StravaSecret { get; set; }
-  /// <summary>
-  /// Garmin account login email
-  /// </summary>
-  public string GarminLogin { get; set; }
-
-  /// <summary>
-  /// Garmin account password
-  /// </summary>
-  public string GarminPassword { get; set; }
-
-  /// <summary>
-  /// true to update Strava activity name when the Garmin activity name is different
-  /// </summary>
-  public bool UpdateName { get; set; }
-
-  /// <summary>
-  /// true to update Strava activity description when the Garmin activity description is not empty and different
-  /// if true than Strava activity description is also updated when <see cref="PropertiesToDescription"/> or <see cref="GearsToDescription"/> are set.
-  /// </summary>
-  public bool UpdateDescription { get; set; }
-
-  /// <summary>
-  /// true to append specified Garmin activity properties to the Strava activity description. Requires UpdateName = true.
-  /// The value of this configuration item is the list of properties separated by semicolons. Optional formatting string follows the colon after the property name.
-  /// Example: "VO2MaxValue;MaxHr;AvgStrideLength:0.0"
-  /// List of Garmin activity properties: https://github.com/sealbro/dotnet.garmin.connect/blob/main/Garmin.Connect/Models/GarminActivity.cs
-  /// Custom numeric format strings: https://docs.microsoft.com/en-us/dotnet/standard/base-types/custom-numeric-format-strings
-  /// </summary>
-  public string PropertiesToDescription { get; set; }
-
-  /// <summary>
-  /// true to append used gears to the description. Requires UpdateName = true.
-  /// </summary>
-  public bool GearsToDescription { get; set; }
-
-  /// <summary>
-  /// true to update Strava athlete weight from Garmin.
-  /// </summary>
-  public bool UpdateWeight { get; set; }
-
-  /// <summary>
-  /// Update activities that have taken place after a certain date.
-  /// If this or the following property is missing in the configuration file today is used.
-  /// </summary>
-  public DateTime DateAfter { get; set; }
-
-  /// <summary>
-  /// Update activities that have taken place before a certain date.
-  /// If this or the previous property is missing in the configuration file tomorrow is used.
-  /// </summary>
-  public DateTime DateBefore { get; set; }
-}
-
-internal static class Extensions
-{
-  public static dynamic JsonDeserialize ( this string json ) => JsonConvert.DeserializeObject<ExpandoObject>( json, new ExpandoObjectConverter() );
-  public static List<ExpandoObject> JsonDeserializeList ( this string json ) => JsonConvert.DeserializeObject<List<ExpandoObject>>( json, new ExpandoObjectConverter() );
-  public static double DateTimeToUnixTimestamp ( this DateTime dateTime ) => ( TimeZoneInfo.ConvertTimeToUtc( dateTime ) - DateTime.UnixEpoch ).TotalSeconds;
 }
