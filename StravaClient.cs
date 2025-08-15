@@ -39,6 +39,16 @@ namespace Garmin2StravaFinalSync
             else
             {
                 clientToken = await RefreshAccessToken(_settings.StravaRefreshToken);
+
+                if (string.IsNullOrEmpty(clientToken))
+                {
+                    clientCode = AuthrizeToStrava();
+                    clientToken = await GetAccessToken(clientCode);
+                    if (string.IsNullOrEmpty(clientToken))
+                    {
+                        throw new Exception("Unbable to connect to Strava");
+                    }
+                }
             }
 
             //if (string.IsNullOrEmpty(clientCode))
@@ -61,6 +71,7 @@ namespace Garmin2StravaFinalSync
 
         public async Task<List<Activity>> GetActivitiesListAsync(DateTime DateAfter, DateTime DateBefore)
         {
+
             HttpResponseMessage stravaResponse = null;
             using HttpClient stravaHttpClient = new()
             {

@@ -51,6 +51,16 @@ foreach ( string propertyCfg in ( settings.PropertiesToDescription ?? "" ).Split
 }
 
 
+var garmin = new GarminClient(settings.GarminLogin, settings.GarminPassword);
+await garmin.AuthorizeAsync();
+var list = await garmin.GetActivitiesListAsync(settings.DateAfter, settings.DateBefore);
+
+foreach ( var activity in list)
+{
+    await garmin.DownloadActivityAsync(activity.ActivityId, "C:\\Code");
+}
+
+
 var strava = new StravaClient(settings);
 
 await strava.AuthorizeAsync();
@@ -110,21 +120,6 @@ try
   using HttpClient httpClient = new();
   GarminConnectClient client = new( new GarminConnectContext( httpClient, authParameters ) );
 
-  // ----------------------------- Update weight -----------------------------
-  if ( settings.UpdateWeight )
-  {
-    GarminUserSettings garminUserSettings = await client.GetUserSettings();
-    stravaResponse = await stravaHttpClient.PutAsync(
-      $"/api/v3/athlete?" +
-      $"weight={garminUserSettings.UserData.Weight / 1000}&" +
-      $"access_token={stravaAccessToken}", null );
-
-    if ( stravaResponse.StatusCode != HttpStatusCode.OK )
-      throw new( "! Error updating weight {resultPut.StatusCode}." );
-
-    WriteLine( $"Athlete weight updated to {( garminUserSettings.UserData.Weight / 1000 ):0.0}" );
-    checkStravaApiLimits();
-  }
 
   // ----------------------------- Read Strava activities -----------------------------
   WriteLine( "Reading Strava activities, please wait..." );
@@ -189,7 +184,7 @@ try
 
     if ( foundGarminInStrava.Count() != 1 )
         {
-            var array  = await client.DownloadActivity(garminActivity.ActivityId, ActivityDownloadFormat.GPX);
+            var array = await client.DownloadActivity(garminActivity.ActivityId, ActivityDownloadFormat.GPX);
             File.WriteAllBytes($"{garminActivity.ActivityId}.gpx", array);
             WriteLine( $"\t! Garmin activity not found in Strava!");
         }

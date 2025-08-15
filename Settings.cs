@@ -1,18 +1,4 @@
-﻿/*
- * Runs on MS Windows only
- * Built by Visual Studio 2022 Community
- * Target framework = .NET 6.0
- *    Nullable = Disable
- *    Implicit global usings = false
- * Installed Packages:
- *    Unofficial.Garmin.Connect 0.2.0+
- *    Microsoft.Extensions.Configuration
- *    Microsoft.Extensions.Configuration.Json
- *    Microsoft.Extensions.Configuration.Binder
- *    Newtonsoft.Json
- */
-
-using System;
+﻿using System;
 
 internal class Settings
 {
@@ -52,17 +38,20 @@ internal class Settings
     /// </summary>
     public string PropertiesToDescription { get; set; }
 
+    public string StravaAccessToken { get; set; }
+
     /// <summary>
     /// Strava Client ID obtained by registering your API application at https://www.strava.com/settings/api
     /// </summary>
     public int StravaClientId { get; set; }
+    public string StravaCode { get; set; }
+
+    public string StravaRefreshToken { get; set; }
+
     /// <summary>
     /// Strava Client Secret obtained by registering your API application at https://www.strava.com/settings/api
     /// </summary>
     public string StravaSecret { get; set; }
-    public string StravaCode { get; set; }
-    public string StravaAccessToken { get; set; }
-    public string StravaRefreshToken { get; set; }
     public long StravaTokenExpire { get; set; }
     /// <summary>
     /// true to update Strava activity description when the Garmin activity description is not empty and different
@@ -74,10 +63,7 @@ internal class Settings
     /// true to update Strava activity name when the Garmin activity name is different
     /// </summary>
     public bool UpdateName { get; set; }
-    /// <summary>
-    /// true to update Strava athlete weight from Garmin.
-    /// </summary>
-    public bool UpdateWeight { get; set; }
+
 
     public bool IsTokenValid()
     {
