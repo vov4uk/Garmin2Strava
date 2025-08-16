@@ -1,5 +1,4 @@
-﻿using Garmin.Connect.Models;
-using Garmin2StravaFinalSync.Strava.Abstract;
+﻿using Garmin2StravaFinalSync.Strava.Abstract;
 using Garmin2StravaFinalSync.Strava.Models;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;

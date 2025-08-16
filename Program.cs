@@ -105,7 +105,6 @@ internal static class Program
         services.AddScoped<IStravaClient, StravaClient>();
         services.AddScoped<IGarminClient, GarminClient>();
 
-        //services.AddScoped(a => ActivatorUtilities.CreateInstance<StravaUploaderContext>(a, logName, configName));
         services.AddHttpClient();
         services.AddLogging(loggingBuilder => loggingBuilder.AddSerilog(dispose: true));
     }

@@ -12,12 +12,6 @@ using System.Threading.Tasks;
 
 namespace Garmin2StravaFinalSync.Garmin
 {
-    public interface IGarminClient
-    {
-        Task AuthorizeAsync();
-        Task<List<GarminActivity>> GetActivitiesListAsync(DateTime from, DateTime to);
-        Task DownloadActivityAsync(long activityId, string localPath);
-    }
 
     public class GarminClient: IGarminClient
     {
