@@ -8,11 +8,11 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Net.Http;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Garmin2StravaFinalSync.Garmin
 {
-
     public class GarminClient: IGarminClient
     {
         GarminConnectClient client = null;
@@ -33,10 +33,10 @@ namespace Garmin2StravaFinalSync.Garmin
             return Task.CompletedTask;
         }
 
-        public async Task<List<GarminActivity>> GetActivitiesListAsync(DateTime from, DateTime to)
+        public async Task<List<GarminActivity>> GetActivitiesListAsync()
         {
             _logger.LogInformation("Reading Garmin activities, please wait...");
-            GarminActivity[] garminActivities = await client.GetActivitiesByDate(from, to, null);
+            GarminActivity[] garminActivities = await client.GetActivities(0, 20, CancellationToken.None);
             if (garminActivities.Length == 0)
             {
                 _logger.LogWarning($"No Garmin activities");
@@ -44,7 +44,7 @@ namespace Garmin2StravaFinalSync.Garmin
             return garminActivities.ToList();
         }
 
-        public async Task DownloadActivityAsync(long activityId, string localPath)
+        public async Task DownloadActivityAsync(long activityId, string localPath, string activityTitle)
         {
             try
             {
@@ -53,11 +53,11 @@ namespace Garmin2StravaFinalSync.Garmin
                     var array = await client.DownloadActivity(activityId, ActivityDownloadFormat.ORIGINAL);
                     ZipArchive z = new ZipArchive(new MemoryStream(array), ZipArchiveMode.Read);
                     z.ExtractToDirectory(localPath);
-                    _logger.LogInformation($"Garmin activity {activityId} downloaded");
+                    _logger.LogInformation($"{activityTitle}\tdownloaded");
                 }
                 else
                 {
-                    _logger.LogInformation($"Garmin activity {activityId} already downloaded. Skip!");
+                    _logger.LogInformation($"{activityTitle}\talready downloaded. Skip!");
                 }
             }
             catch (Exception e)

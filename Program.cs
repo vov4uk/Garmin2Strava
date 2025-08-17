@@ -28,29 +28,24 @@ internal static class Program
         TimeSpan maxGarminStravaTimeDifference = new(0, 5, 0);
 
         Thread.CurrentThread.CurrentCulture = Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
-        DateTime to = DateTime.Today;
-        DateTime from = new DateTime(Math.Max(settings.MinActivityDate.Ticks, to.AddDays(settings.PeriodDays * -1).Ticks));
-
-        Log.Information($"Time interval = {from:yyyy-MM-dd} - {to:yyyy-MM-dd}");
 
         var garmin = serviceProvider.GetService<IGarminClient>();
         await garmin.AuthorizeAsync();
-        var garminActivities = await garmin.GetActivitiesListAsync(from, to).ConfigureAwait(false);
+        var garminActivities = await garmin.GetActivitiesListAsync().ConfigureAwait(false);
 
         foreach (var activity in garminActivities)
         {
-            await garmin.DownloadActivityAsync(activity.ActivityId, settings.Garmin.GarminActivitiesPath);
+            await garmin.DownloadActivityAsync(activity.ActivityId, settings.Garmin.GarminActivitiesPath, $"{activity.ActivityType.TypeKey}\t{activity.StartTimeLocal}\t{activity.ActivityName}");
         }
 
         var stravaClient = serviceProvider.GetService<IStravaClient>();
-        var stravaActivities = await stravaClient.GetActivitiesListAsync(from, to).ConfigureAwait(false);
+        var stravaActivities = await stravaClient.GetActivitiesListAsync().ConfigureAwait(false);
+
+        Log.Information("\r\nCompare Garmin 2 Strava activities\r\n");
 
         foreach (GarminActivity garminActivity in garminActivities)
         {
-            Log.Information(
-              $"\t{garminActivity.ActivityType.TypeKey}\t" +
-              $"{garminActivity.StartTimeLocal}\t" +
-              $"{garminActivity.ActivityName}");
+            string garminActivityTitle = $"{garminActivity.ActivityType.TypeKey}\t{garminActivity.StartTimeLocal}\t{garminActivity.ActivityName}\t";
 
             var foundGarminInStrava =
               from StravaActivity stravaActivity
@@ -61,7 +56,7 @@ internal static class Program
 
             if (foundGarminInStrava.Count() != 1)
             {
-                Log.Information($"\t! Garmin activity {garminActivity.ActivityId} not found in Strava!");
+                Log.Information($"{garminActivityTitle}not found in Strava!");
                 var stravaActivityId = await stravaClient.UploadActivityAsync(Path.Combine(settings.Garmin.GarminActivitiesPath, $"{garminActivity.ActivityId}_ACTIVITY.fit"));
 
                 await stravaClient.UpdateActivityAsync(stravaActivityId, garminActivity.ActivityName, garminActivity.Description);
@@ -69,14 +64,17 @@ internal static class Program
             else
             {
                 var stravaActivity = foundGarminInStrava.First();
-                Log.Information($"\t! Garmin activity {garminActivity.ActivityId} found in Strava with id {stravaActivity.Id}!");
+                Log.Information($"{garminActivityTitle}found in Strava with id {stravaActivity.Id}!");
                 if (settings.UpdateName && garminActivity.ActivityName != stravaActivity.Name)
                 {
-                    Log.Information($"\t! Strava activity {stravaActivity.Name} -> {garminActivity.ActivityName}!");
+                    Log.Information($"! Strava activity renamed {stravaActivity.Name} -> {garminActivity.ActivityName}!");
                     await stravaClient.UpdateActivityAsync(stravaActivity.Id, garminActivity.ActivityName, garminActivity.Description);
                 }
             }
         }
+
+        Log.Information("Done for today!");
+        Console.ReadKey();
     }
 
     public static void ConfigureServices(ServiceCollection services)

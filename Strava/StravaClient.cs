@@ -38,10 +38,10 @@ namespace Garmin2StravaFinalSync.Strava
             _logger = logger;
         }
 
-        public async Task<List<StravaActivity>> GetActivitiesListAsync(DateTime from, DateTime to)
+        public async Task<List<StravaActivity>> GetActivitiesListAsync()
         {
             AuthTokenResponse auth = await GetAuthToken();
-            return await GetActivitiesListAsync(auth.AccessToken, from, to);
+            return await GetActivitiesListAsync(auth.AccessToken);
         }
 
         public async Task<long> UploadActivityAsync(string path)
@@ -260,7 +260,7 @@ namespace Garmin2StravaFinalSync.Strava
             throw new($"Checking upload failed with max attempts ({totalAttempts}) reached");
         }
 
-        private async Task<List<StravaActivity>> GetActivitiesListAsync(string token, DateTime from, DateTime to)
+        private async Task<List<StravaActivity>> GetActivitiesListAsync(string token)
         {
             HttpResponseMessage stravaResponse = null;
 
@@ -269,33 +269,25 @@ namespace Garmin2StravaFinalSync.Strava
 
             _logger.LogInformation("Reading Strava activities, please wait...");
             List<StravaActivity> stravaActivities = new();
-            for (int stravaActivitiesPage = 1; ; stravaActivitiesPage++)
+
+            string getActivitiesUrl = "https://www.strava.com/api/v3/athlete/activities?per_page=20";
+
+            stravaResponse = await stravaHttpClient.GetAsync(getActivitiesUrl);
+            if (stravaResponse.StatusCode != HttpStatusCode.OK)
+                throw new($"! Error {stravaResponse.StatusCode} when reading Strava activities.");
+
+            checkStravaApiLimits(stravaResponse);
+
+            var activitiesResponse = await stravaResponse.Content.ReadAsStringAsync();
+
+            List<StravaActivity> newActivities = JsonConvert.DeserializeObject<List<StravaActivity>>(activitiesResponse);
+
+            foreach (StravaActivity stravaActivity in newActivities)
             {
-                string getActivitiesUrl = "https://www.strava.com/api/v3/athlete/activities?" +
-                  $"before={to.AddDays(1).AddSeconds(-1).DateTimeToUnixTimestamp()}&" +
-                  $"after={from.DateTimeToUnixTimestamp()}&" +
-                  $"page={stravaActivitiesPage}&" +
-                  "per_page=200&";
-
-                stravaResponse = await stravaHttpClient.GetAsync(getActivitiesUrl);
-                if (stravaResponse.StatusCode != HttpStatusCode.OK)
-                    throw new($"! Error {stravaResponse.StatusCode} when reading Strava activities.");
-
-                checkStravaApiLimits(stravaResponse);
-
-                var activitiesResponse = await stravaResponse.Content.ReadAsStringAsync();
-
-                List<StravaActivity> newActivities = JsonConvert.DeserializeObject<List<StravaActivity>>(activitiesResponse);
-                if (!newActivities.Any())
-                    break;
-
-                foreach (StravaActivity stravaActivity in newActivities)
-                {
-                    _logger.LogInformation($"\t{stravaActivity.Type}\t{stravaActivity.StartDateLocal}\t" + $"{stravaActivity.Name}");
-                }
-
-                stravaActivities.AddRange(newActivities);
+                _logger.LogInformation($"\t{stravaActivity.Type}\t{stravaActivity.StartDateLocal}\t{stravaActivity.Name}");
             }
+
+            stravaActivities.AddRange(newActivities);
 
             if (stravaActivities.Count == 0)
             {
