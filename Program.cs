@@ -1,4 +1,5 @@
-﻿using Garmin.Connect.Models;
+﻿using ConsoleTables;
+using Garmin.Connect.Models;
 using Garmin2StravaFinalSync.Garmin;
 using Garmin2StravaFinalSync.Strava;
 using Garmin2StravaFinalSync.Strava.Abstract;
@@ -10,6 +11,7 @@ using System;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using StravaActivity = Strava.Activities.Activity;
@@ -20,6 +22,8 @@ internal static class Program
     [STAThread]
     static async Task Main()
     {
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+        Console.OutputEncoding = Encoding.UTF8;
         var services = new ServiceCollection();
         ConfigureServices(services);
         using ServiceProvider serviceProvider = services.BuildServiceProvider();
@@ -33,20 +37,25 @@ internal static class Program
         await garmin.AuthorizeAsync();
         var garminActivities = await garmin.GetActivitiesListAsync().ConfigureAwait(false);
 
+        var table = new ConsoleTable("Activity Type", "Start Time", "Activity Name", "Status");
         foreach (var activity in garminActivities)
         {
-            await garmin.DownloadActivityAsync(activity.ActivityId, settings.Garmin.GarminActivitiesPath, $"{activity.ActivityType.TypeKey}\t{activity.StartTimeLocal}\t{activity.ActivityName}");
+            var downloaded = await garmin.DownloadActivityAsync(activity.ActivityId, settings.Garmin.GarminActivitiesPath);
+            var status = downloaded ? "Downloaded" : "Skipped";
+            table.AddRow(activity.ActivityType.TypeKey, activity.StartTimeLocal, activity.ActivityName, status);
         }
+
+        table.Write(Format.Minimal);
 
         var stravaClient = serviceProvider.GetService<IStravaClient>();
         var stravaActivities = await stravaClient.GetActivitiesListAsync().ConfigureAwait(false);
 
         Log.Information("\r\nCompare Garmin 2 Strava activities\r\n");
 
+        var resultsTable = new ConsoleTable("Activity Type", "Start Time", "Activity Name", "Activity ID", "Strava ID", "Status");
+
         foreach (GarminActivity garminActivity in garminActivities)
         {
-            string garminActivityTitle = $"{garminActivity.ActivityType.TypeKey}\t{garminActivity.StartTimeLocal}\t{garminActivity.ActivityName}\t";
-
             var foundGarminInStrava =
               from StravaActivity stravaActivity
               in stravaActivities
@@ -56,24 +65,31 @@ internal static class Program
 
             if (foundGarminInStrava.Count() != 1)
             {
-                Log.Information($"{garminActivityTitle}not found in Strava!");
                 var stravaActivityId = await stravaClient.UploadActivityAsync(Path.Combine(settings.Garmin.GarminActivitiesPath, $"{garminActivity.ActivityId}_ACTIVITY.fit"));
-
                 await stravaClient.UpdateActivityAsync(stravaActivityId, garminActivity.ActivityName, garminActivity.Description);
+                resultsTable.AddRow(garminActivity.ActivityType.TypeKey, garminActivity.StartTimeLocal, garminActivity.ActivityName, garminActivity.ActivityId, stravaActivityId, "Uploaded");
             }
             else
             {
                 var stravaActivity = foundGarminInStrava.First();
-                Log.Information($"{garminActivityTitle}found in Strava with id {stravaActivity.Id}!");
+                string status = "Found";
                 if (settings.UpdateName && garminActivity.ActivityName != stravaActivity.Name)
                 {
-                    Log.Information($"! Strava activity renamed {stravaActivity.Name} -> {garminActivity.ActivityName}!");
                     await stravaClient.UpdateActivityAsync(stravaActivity.Id, garminActivity.ActivityName, garminActivity.Description);
+                    status = "Updated";
                 }
+                resultsTable.AddRow(garminActivity.ActivityType.TypeKey, garminActivity.StartTimeLocal, garminActivity.ActivityName, garminActivity.ActivityId, stravaActivity.Id, status);
             }
         }
 
-        Log.Information("Done for today!");
+
+        resultsTable.Write(Format.Minimal);
+
+
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine("\r\nDone for today!");
+        Console.ResetColor();
+
         Console.ReadKey();
     }
 

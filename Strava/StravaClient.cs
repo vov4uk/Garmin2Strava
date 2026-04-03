@@ -1,4 +1,5 @@
-﻿using Garmin2StravaFinalSync.Strava.Abstract;
+﻿using ConsoleTables;
+using Garmin2StravaFinalSync.Strava.Abstract;
 using Garmin2StravaFinalSync.Strava.Models;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -282,10 +283,12 @@ namespace Garmin2StravaFinalSync.Strava
 
             List<StravaActivity> newActivities = JsonConvert.DeserializeObject<List<StravaActivity>>(activitiesResponse);
 
+            var table = new ConsoleTable("Activity Type", "Start Date", "Activity Name");
             foreach (StravaActivity stravaActivity in newActivities)
             {
-                _logger.LogInformation($"\t{stravaActivity.Type}\t{stravaActivity.StartDateLocal}\t{stravaActivity.Name}");
+                table.AddRow(stravaActivity.Type, stravaActivity.StartDateLocal, stravaActivity.Name);
             }
+            table.Write(Format.Minimal);
 
             stravaActivities.AddRange(newActivities);
 

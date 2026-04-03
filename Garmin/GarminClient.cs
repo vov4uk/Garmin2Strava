@@ -44,7 +44,7 @@ namespace Garmin2StravaFinalSync.Garmin
             return garminActivities.ToList();
         }
 
-        public async Task DownloadActivityAsync(long activityId, string localPath, string activityTitle)
+        public async Task<bool> DownloadActivityAsync(long activityId, string localPath)
         {
             try
             {
@@ -53,16 +53,24 @@ namespace Garmin2StravaFinalSync.Garmin
                     var array = await client.DownloadActivity(activityId, ActivityDownloadFormat.ORIGINAL);
                     ZipArchive z = new ZipArchive(new MemoryStream(array), ZipArchiveMode.Read);
                     z.ExtractToDirectory(localPath);
-                    _logger.LogInformation($"{activityTitle}\tdownloaded");
+
+                    if (!File.Exists(Path.Combine(localPath,"gpx", $"{activityId}_ACTIVITY.gpx")))
+                    {
+                        var gpx = await client.DownloadActivity(activityId, ActivityDownloadFormat.GPX);
+                        await File.WriteAllBytesAsync(Path.Combine(localPath, "gpx", $"{activityId}_ACTIVITY.gpx"), gpx);
+                    }
+
+                    return true;
                 }
                 else
                 {
-                    _logger.LogInformation($"{activityTitle}\talready downloaded. Skip!");
+                    return false;
                 }
             }
             catch (Exception e)
             {
                 _logger.LogError(e.ToString());
+                return false;
             }
 
         }

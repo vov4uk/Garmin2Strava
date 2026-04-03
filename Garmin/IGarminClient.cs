@@ -8,6 +8,6 @@ namespace Garmin2StravaFinalSync.Garmin
     {
         Task AuthorizeAsync();
         Task<List<GarminActivity>> GetActivitiesListAsync();
-        Task DownloadActivityAsync(long activityId, string localPath, string activityTitle);
+        Task<bool> DownloadActivityAsync(long activityId, string localPath);
     }
 }
