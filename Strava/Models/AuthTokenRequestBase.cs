@@ -1,16 +1,16 @@
-﻿using System.Text.Json.Serialization;
+﻿using Newtonsoft.Json;
 
 namespace Garmin2StravaFinalSync.Strava.Models
 {
     public abstract class AuthTokenRequestBase
     {
-        [JsonPropertyName("client_id")]
+        [JsonProperty("client_id")]
         public string ClientId { get; }
 
-        [JsonPropertyName("client_secret")]
+        [JsonProperty("client_secret")]
         public string ClientSecret { get; }
 
-        [JsonPropertyName("grant_type")]
+        [JsonProperty("grant_type")]
         public string GrantType { get; }
 
         protected AuthTokenRequestBase(StravaConfig auth, string grant)

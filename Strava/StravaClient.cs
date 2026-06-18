@@ -1,5 +1,4 @@
-﻿using ConsoleTables;
-using Garmin2StravaFinalSync.Strava.Abstract;
+﻿using Garmin2StravaFinalSync.Strava.Abstract;
 using Garmin2StravaFinalSync.Strava.Models;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -168,15 +167,14 @@ namespace Garmin2StravaFinalSync.Strava
 
         private async Task<AuthTokenResponse> MakeTokenRequestAsync(object body)
         {
-            var request = new StringContent(System.Text.Json.JsonSerializer.Serialize(body), Encoding.UTF8, System.Net.Mime.MediaTypeNames.Application.Json);
+            var request = new StringContent(JsonConvert.SerializeObject(body), Encoding.UTF8, System.Net.Mime.MediaTypeNames.Application.Json);
             var httpClient = _httpClientFactory.CreateClient();
             var httpResponseMessage = await httpClient.PostAsync(authUrl, request);
 
             if (httpResponseMessage.IsSuccessStatusCode)
             {
-                using var contentStream = await httpResponseMessage.Content.ReadAsStreamAsync();
-                AuthTokenResponse response = await System.Text.Json.JsonSerializer.DeserializeAsync<AuthTokenResponse>(contentStream) ?? throw new("AuthTokenResponse not valid");
-                return response;
+                var json = await httpResponseMessage.Content.ReadAsStringAsync();
+                return JsonConvert.DeserializeObject<AuthTokenResponse>(json) ?? throw new("AuthTokenResponse not valid");
             }
             else
             {
@@ -199,8 +197,8 @@ namespace Garmin2StravaFinalSync.Strava
 
             if (httpResponseMessage.IsSuccessStatusCode)
             {
-                using var contentStream = await httpResponseMessage.Content.ReadAsStreamAsync();
-                UploadResponse response = await System.Text.Json.JsonSerializer.DeserializeAsync<UploadResponse>(contentStream) ?? throw new("Upload response not valid");
+                var json = await httpResponseMessage.Content.ReadAsStringAsync();
+                UploadResponse response = JsonConvert.DeserializeObject<UploadResponse>(json) ?? throw new("Upload response not valid");
                 _logger.LogInformation("{fileName} has been uploaded with status: {Status}", fileName, response.Status);
 
                 if (string.IsNullOrEmpty(response.Error))
@@ -233,8 +231,8 @@ namespace Garmin2StravaFinalSync.Strava
 
                 if (httpResponseMessage.IsSuccessStatusCode)
                 {
-                    using var contentStream = await httpResponseMessage.Content.ReadAsStreamAsync();
-                    UploadResponse response = await System.Text.Json.JsonSerializer.DeserializeAsync<UploadResponse>(contentStream) ?? throw new("Status check response not valid");
+                    var json = await httpResponseMessage.Content.ReadAsStringAsync();
+                    UploadResponse response = JsonConvert.DeserializeObject<UploadResponse>(json) ?? throw new("Status check response not valid");
 
                     if (response.Status == "Your activity is ready.")
                     {
@@ -283,18 +281,11 @@ namespace Garmin2StravaFinalSync.Strava
 
             List<StravaActivity> newActivities = JsonConvert.DeserializeObject<List<StravaActivity>>(activitiesResponse);
 
-            var table = new ConsoleTable("Activity Type", "Start Date", "Activity Name");
-            foreach (StravaActivity stravaActivity in newActivities)
-            {
-                table.AddRow(stravaActivity.Type, stravaActivity.StartDateLocal, stravaActivity.Name);
-            }
-            table.Write(Format.Minimal);
-
             stravaActivities.AddRange(newActivities);
 
             if (stravaActivities.Count == 0)
             {
-                _logger.LogInformation($"No Strava activities");
+                _logger.LogInformation("No Strava activities");
             }
             return stravaActivities;
         }

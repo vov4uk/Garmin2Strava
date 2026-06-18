@@ -51,7 +51,7 @@ namespace Garmin2StravaFinalSync.Garmin
                 if (!File.Exists(Path.Combine(localPath, $"{activityId}_ACTIVITY.fit" )))
                 {
                     var array = await client.DownloadActivity(activityId, ActivityDownloadFormat.ORIGINAL);
-                    ZipArchive z = new ZipArchive(new MemoryStream(array), ZipArchiveMode.Read);
+                    using var z = new ZipArchive(new MemoryStream(array), ZipArchiveMode.Read);
                     z.ExtractToDirectory(localPath);
 
                     if (!File.Exists(Path.Combine(localPath,"gpx", $"{activityId}_ACTIVITY.gpx")))

@@ -1,7 +1,7 @@
 ﻿using Garmin2StravaFinalSync.Strava.Abstract;
 using Garmin2StravaFinalSync.Strava.Models;
+using Newtonsoft.Json;
 using System.IO;
-using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace Garmin2StravaFinalSync.Strava
@@ -12,15 +12,14 @@ namespace Garmin2StravaFinalSync.Strava
 
         public async Task<AuthTokenResponse> GetAsync()
         {
-            using FileStream stream = File.OpenRead(fileName);
-            return await JsonSerializer.DeserializeAsync<AuthTokenResponse>(stream) ?? throw new EndOfStreamException("auth file not in correct format");
+            string json = await File.ReadAllTextAsync(fileName);
+            return JsonConvert.DeserializeObject<AuthTokenResponse>(json) ?? throw new InvalidDataException("auth file not in correct format");
         }
 
         public async Task SetAsync(AuthTokenResponse auth)
         {
-            using FileStream stream = File.Create(fileName);
-            await JsonSerializer.SerializeAsync(stream, auth);
-            await stream.DisposeAsync();
+            string json = JsonConvert.SerializeObject(auth, Formatting.Indented);
+            await File.WriteAllTextAsync(fileName, json);
         }
 
         public bool Exists()

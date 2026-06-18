@@ -19,7 +19,6 @@ using StravaActivity = Strava.Activities.Activity;
 
 internal static class Program
 {
-    [STAThread]
     static async Task Main()
     {
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
@@ -27,13 +26,13 @@ internal static class Program
         var services = new ServiceCollection();
         ConfigureServices(services);
         using ServiceProvider serviceProvider = services.BuildServiceProvider();
-        var settings = serviceProvider.GetService<Settings>();
+        var settings = serviceProvider.GetRequiredService<Settings>();
 
         TimeSpan maxGarminStravaTimeDifference = new(0, 5, 0);
 
         Thread.CurrentThread.CurrentCulture = Thread.CurrentThread.CurrentUICulture = CultureInfo.InvariantCulture;
 
-        var garmin = serviceProvider.GetService<IGarminClient>();
+        var garmin = serviceProvider.GetRequiredService<IGarminClient>();
         await garmin.AuthorizeAsync();
         var garminActivities = await garmin.GetActivitiesListAsync().ConfigureAwait(false);
 
@@ -47,8 +46,15 @@ internal static class Program
 
         table.Write(Format.Minimal);
 
-        var stravaClient = serviceProvider.GetService<IStravaClient>();
+        var stravaClient = serviceProvider.GetRequiredService<IStravaClient>();
         var stravaActivities = await stravaClient.GetActivitiesListAsync().ConfigureAwait(false);
+
+        var stravaTable = new ConsoleTable("Activity Type", "Start Date", "Activity Name");
+        foreach (var stravaActivity in stravaActivities)
+        {
+            stravaTable.AddRow(stravaActivity.Type, stravaActivity.StartDateLocal, stravaActivity.Name);
+        }
+        stravaTable.Write(Format.Minimal);
 
         Log.Information("\r\nCompare Garmin 2 Strava activities\r\n");
 

@@ -1,14 +1,14 @@
 ﻿using System;
-using System.Text.Json.Serialization;
+using Newtonsoft.Json;
 
 namespace Garmin2StravaFinalSync.Strava.Models
 {
     public class GitHubReleasesResponse
     {
-        [JsonPropertyName("html_url")]
+        [JsonProperty("html_url")]
         public string HtmlUrl { get; set; } = string.Empty;
 
-        [JsonPropertyName("name")]
+        [JsonProperty("name")]
         public Version Version { get; set; } = new Version();
     }
 }
