@@ -1,4 +1,5 @@
 ﻿using Garmin.Connect.Models;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -8,6 +9,7 @@ namespace Garmin2StravaFinalSync.Garmin
     {
         Task AuthorizeAsync();
         Task<List<GarminActivity>> GetActivitiesListAsync();
-        Task<bool> DownloadActivityAsync(long activityId, string localPath);
+        Task<List<GarminActivity>> GetActivitiesListAsync(DateTime startDate, DateTime endDate);
+        Task<bool> DownloadActivityAsync(GarminActivity activity, string localPath);
     }
 }

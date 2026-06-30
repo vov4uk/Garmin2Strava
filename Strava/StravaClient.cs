@@ -44,6 +44,13 @@ namespace Garmin2StravaFinalSync.Strava
             return await GetActivitiesListAsync(auth.AccessToken);
         }
 
+        public async Task<List<StravaActivity>> GetActivitiesListAsync(DateTime after)
+        {
+            AuthTokenResponse auth = await GetAuthToken();
+            long afterEpoch = new DateTimeOffset(after.ToUniversalTime()).ToUnixTimeSeconds();
+            return await GetActivitiesListAsync(auth.AccessToken, afterEpoch);
+        }
+
         public async Task<long> UploadActivityAsync(string path)
         {
             AuthTokenResponse auth = await GetAuthToken();
@@ -259,7 +266,7 @@ namespace Garmin2StravaFinalSync.Strava
             throw new($"Checking upload failed with max attempts ({totalAttempts}) reached");
         }
 
-        private async Task<List<StravaActivity>> GetActivitiesListAsync(string token)
+        private async Task<List<StravaActivity>> GetActivitiesListAsync(string token, long? afterEpoch = null)
         {
             HttpResponseMessage stravaResponse = null;
 
@@ -269,7 +276,9 @@ namespace Garmin2StravaFinalSync.Strava
             _logger.LogInformation("Reading Strava activities, please wait...");
             List<StravaActivity> stravaActivities = new();
 
-            string getActivitiesUrl = "https://www.strava.com/api/v3/athlete/activities?per_page=20";
+            string getActivitiesUrl = afterEpoch.HasValue
+                ? $"https://www.strava.com/api/v3/athlete/activities?after={afterEpoch}&per_page=30"
+                : "https://www.strava.com/api/v3/athlete/activities?per_page=20";
 
             stravaResponse = await stravaHttpClient.GetAsync(getActivitiesUrl);
             if (stravaResponse.StatusCode != HttpStatusCode.OK)
